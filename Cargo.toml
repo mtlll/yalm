@@ -1,0 +1,13 @@
+[package]
+name = "yalm"
+version = "0.1.0"
+authors = ["mtl"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tui = { version = "0.8", default-features = false, features = ['crossterm']}
+crossterm = "0.14"
+pam = "0.7.0"
+users = "0.9"
