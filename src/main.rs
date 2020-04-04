@@ -26,47 +26,53 @@ mod textbox;
 
 use textbox::Textbox;
 
-pub struct Inputs<'a> {
-	inputs: [Textbox<'a>; 2],
-	focused: Focused,
-}
+mod input;
 
-pub enum Focused {
-	Username,
-	Password
-}
-
-use crate::Focused::*;
-
-impl<'a> Inputs<'a> {
-	pub fn focused(&mut self) -> &mut Textbox<'a> {
-		match self.focused {
-			Username => {&mut self.inputs[0]}
-			Password => {&mut self.inputs[1]}
-		}
-	}
-	
-	pub fn username(&mut self) -> &mut Textbox<'a> {
-		&mut self.inputs[0]
-	}
-	
-	pub fn password(&mut self) -> &mut Textbox<'a> {
-		&mut self.inputs[1]
-	}
-}
+use input::Inputs;
 
 fn main() -> Result<(), ErrorKind> {
 	let stdout = io::stdout();
 	terminal::enable_raw_mode()?;
 	let backend = CrosstermBackend::new(stdout);
 	let mut terminal = Terminal::new(backend)?;
-	let mut inputs = Inputs {
-		inputs: [
-					Textbox::default().title("Username"),
-					Textbox::default().title("Password").mask_input(true)
-				],
-		focused: Username
-	};
+	let mut inputs = Inputs::default();
+	//let mut active_input : &Textbox = &inputs.username;
+	
+    inputs.add_input("foo", false);
+    inputs.add_input("bar", false);
+	terminal.clear()?;
+	loop {
+        terminal.draw(|mut f| {
+            inputs.draw_inputs(&mut f)
+        })?;
+		if let Event::Key(event) = read()? {
+			//eprintln!("Received keyevent: {:?}", event);
+			match event.code {
+				
+				KeyCode::Esc => {
+					break;
+				}
+                KeyCode::Enter => {
+                    inputs.add_input("foo", false);
+                }
+                _ => {}
+			}
+			
+		}
+	}
+    
+    terminal.clear()?;
+	Ok(())
+}
+
+/*
+fn oldmain() -> Result<(), ErrorKind> {
+    
+	let stdout = io::stdout();
+	terminal::enable_raw_mode()?;
+	let backend = CrosstermBackend::new(stdout);
+	let mut terminal = Terminal::new(backend)?;
+	let mut inputs = Inputs::default();
 	//let mut active_input : &Textbox = &inputs.username;
 	
 	terminal.clear()?;
@@ -135,49 +141,4 @@ fn main() -> Result<(), ErrorKind> {
     println!("\nSuccessfully created a session!");
 	Ok(())
 }
-
-fn draw_main_layout<B>(f: &mut Frame<B>, inputs: &mut Inputs) 
-where 
-	B: Backend, 
-{ 
-	let chunks = Layout::default()
-		.direction(Direction::Vertical)
-		.horizontal_margin(40)
-		.constraints(
-			[
-				Constraint::Percentage(40),
-				Constraint::Length(8),
-				Constraint::Percentage(40),
-			]
-			.as_ref(),
-		)
-		.split(f.size());
-	Block::default()
-		//.title("Foo")
-		.borders(Borders::ALL)
-		.render(f, chunks[1]);
-	
-	draw_inputs(f, chunks[1], inputs)
-}
-
-fn draw_inputs<B>(f: &mut Frame<B>, layout_chunk: Rect, inputs: &mut Inputs)
-where
-	B: Backend
-{
-	let chunks = Layout::default()
-	
-		.direction(Direction::Vertical)
-		.margin(1)
-		.constraints(
-			[
-				Constraint::Percentage(50),
-				Constraint::Percentage(50),
-			]
-			.as_ref()
-		)
-		.split(layout_chunk);
-		
-	inputs.username().render(f, chunks[0]);
-	inputs.password().render(f, chunks[1]);
-	
-}
+*/

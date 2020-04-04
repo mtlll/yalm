@@ -116,7 +116,7 @@ impl<'a> Textbox<'a> {
 	}
 }
 
-impl<'a>  Textbox<'a>
+impl<'a> Textbox<'a>
 {
 	pub fn render<B>(&mut self, f: &mut Frame<B>, area: Rect) 
 	where
