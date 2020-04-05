@@ -34,34 +34,27 @@ fn main() -> Result<(), ErrorKind> {
 	let stdout = io::stdout();
 	terminal::enable_raw_mode()?;
 	let backend = CrosstermBackend::new(stdout);
-	let mut terminal = Terminal::new(backend)?;
-	let mut inputs = Inputs::default();
-	//let mut active_input : &Textbox = &inputs.username;
-	
-    inputs.add_input("foo", false);
-    inputs.add_input("bar", false);
-	terminal.clear()?;
-	loop {
-        terminal.draw(|mut f| {
-            inputs.draw_inputs(&mut f)
-        })?;
-		if let Event::Key(event) = read()? {
-			//eprintln!("Received keyevent: {:?}", event);
-			match event.code {
-				
-				KeyCode::Esc => {
-					break;
-				}
-                KeyCode::Enter => {
-                    inputs.add_input("foo", false);
-                }
-                _ => {}
-			}
-			
-		}
-	}
+	let mut term = Terminal::new(backend)?;
+    let username: String;
+    let password: String;
     
-    terminal.clear()?;
+    term.clear()?;
+    
+    let mut inputs = Inputs::default();
+        
+    inputs.add_input("Username", false);
+    username = inputs.get_next_input(&mut term)?;
+        
+    inputs.add_input("Password", true);
+    password = inputs.get_next_input(&mut term)?;
+        
+    
+    
+    terminal::disable_raw_mode()?;
+    term.clear()?;
+    
+    println!("\nUsername: {}\nPassword: {}", username, password);
+    
 	Ok(())
 }
 

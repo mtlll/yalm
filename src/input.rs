@@ -13,6 +13,15 @@ use tui::{
         Widget,
     },
     Frame,
+    Terminal,
+};
+use crossterm::{
+    event::{
+        read,
+        Event,
+        KeyCode
+    },
+    ErrorKind,
 };
 
 pub struct Inputs<'a> {
@@ -31,6 +40,7 @@ impl<'a> Default for Inputs<'a> {
         }
     }
 }
+
 impl<'a> Inputs<'a> {
     
     pub fn add_input(&mut self, title: &'a str, mask_input: bool) {
@@ -59,10 +69,56 @@ impl<'a> Inputs<'a> {
         
         for i in 0..self.inputs_idx {
             self.inputs[i].render(f, chunks[i]);
-        }    
+        }
+    }
+    
+    pub fn get_next_input<B>(&mut self, term: &mut Terminal<B>) -> Result<String, ErrorKind>
+    where
+        B: Backend
+    {
+        let active_idx : usize;
+        
+        if self.inputs_idx > 0 {
+            active_idx = self.inputs_idx - 1;
+        } else {
+            return Ok("".to_string());
+        }
+        
+        term.show_cursor()?;
+        
+        loop {
+            term.draw(|mut f| {
+                self.draw_inputs(&mut f);
+            })?;
+            let active_input : &mut Textbox = &mut self.inputs[active_idx];
+            let (x, y) = active_input.get_cursor_xy();
+            term.set_cursor(x, y)?;
+            
+            if let Ok(Event::Key(event)) = read() {
+                match event.code {
+                    KeyCode::Char(c) => {
+                        active_input.add_char(c);
+                    }
+                    KeyCode::Backspace => {
+                        active_input.remove_char();
+                    }
+                    KeyCode::Left => {
+                        active_input.move_left();
+                    }
+                    KeyCode::Right => {
+                        active_input.move_right();
+                    }
+                    KeyCode::Enter => {
+                        term.hide_cursor();
+                        return Ok(active_input.get_input());
+                    }
+                    _ => {}
+                }
+            }
+        }
         
     }
-}    
+}
 
 fn get_input_area(layout_chunk: Rect, height: u16) -> Rect {
     let chunks = Layout::default()
