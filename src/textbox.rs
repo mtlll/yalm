@@ -111,8 +111,8 @@ impl<'a> Textbox<'a> {
 		(self.cursor_x, self.cursor_y)
 	}
 	
-	pub fn get_input(self) -> String {
-		self.input.clone().iter().collect()
+	pub fn get_input(&self) -> String {
+		self.input.iter().collect()
 	}
 }
 
