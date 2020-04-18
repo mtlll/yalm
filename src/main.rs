@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::borrow::BorrowMut;
 use std::io;
 use std::{thread, time};
@@ -15,7 +16,12 @@ use crossterm::{
 };
 use std::process::Command;
 use std::env;
+use std::ffi::{CStr, CString};
 use pam::Authenticator;
+use pam::Converse;
+use pam::PamResult;
+use pam::PamError;
+use pam_sys::PamReturnCode;
 
 use std::os::unix::process::CommandExt;
 
@@ -26,112 +32,99 @@ mod textbox;
 
 use textbox::Textbox;
 
-mod input;
+mod loginform;
 
-use input::Inputs;
+use loginform::LoginForm;
+
+mod dynamicconv;
+use dynamicconv::DynamicConv;
+
+static ERROR_STRINGS: [&str; 9] = [
+    "Success. Wait, this is an error string?",
+    "dlopen() failure when dynamically loading a service module",
+    "Symbol not found",
+    "Error in service module",
+    "System error",
+    "Memory buffer error",
+    "Permission denied",
+    "Authentication failure",
+    "Unknown error"
+];
 
 fn main() -> Result<(), ErrorKind> {
-	let stdout = io::stdout();
-	terminal::enable_raw_mode()?;
-	let backend = CrosstermBackend::new(stdout);
-	let mut term = Terminal::new(backend)?;
-    let username: String;
-    let password: String;
-    
-    term.clear()?;
-    
-    let mut inputs = Inputs::default();
-        
-    inputs.add_input("Username", false);
-    username = inputs.get_next_input(&mut term)?;
-        
-    inputs.add_input("Password", true);
-    password = inputs.get_next_input(&mut term)?;
-        
-    
-    
-    terminal::disable_raw_mode()?;
-    term.clear()?;
-    
-    println!("\nUsername: {}\nPassword: {}", username, password);
-    
-	Ok(())
+
+    loop {
+        main_loop()?;
+    }
 }
 
-/*
-fn oldmain() -> Result<(), ErrorKind> {
+fn main_loop() -> Result<(), ErrorKind> {
     
 	let stdout = io::stdout();
-	terminal::enable_raw_mode()?;
 	let backend = CrosstermBackend::new(stdout);
-	let mut terminal = Terminal::new(backend)?;
-	let mut inputs = Inputs::default();
-	//let mut active_input : &Textbox = &inputs.username;
-	
-	terminal.clear()?;
-	terminal.show_cursor()?;
-	loop {
-		terminal.draw(|mut f| {
-			draw_main_layout(&mut f, &mut inputs);
-		})?;
-		
-		let (x, y) = inputs.focused().get_cursor_xy();
-		terminal.set_cursor(x, y)?;
-		
-		if let Event::Key(event) = read()? {
-			//eprintln!("Received keyevent: {:?}", event);
-			let input_mut = inputs.focused();
-			match event.code {
-				
-				KeyCode::Esc => {
-					break;
-				}
-				KeyCode::Char(c) => {
-					input_mut.add_char(c);
-				}
-				KeyCode::Backspace => {
-					input_mut.remove_char();
-				}
-				KeyCode::Left => {
-					input_mut.move_left();
-				}
-				KeyCode::Right => {
-					input_mut.move_right();
-				}
-				KeyCode::Enter => {
-					match inputs.focused {
-						Username => {
-							inputs.focused = Password;
-						}
-						Password => {
-							break;
-						}
-					}				
-				}
-				_ => {}
-			}
-			
-		}
-	}
+	let mut term = Terminal::new(backend)?;
+
+    let user: users::User;
+    let mut error: Option<String> = None;
     
-    terminal.clear()?;
-    let username = inputs.username().clone().get_input();
-    let user = users::get_user_by_name(&username).expect("No such user.");
-    let password = inputs.password().clone().get_input();
-    let mut auth = Authenticator::with_password("login").expect("Failed to init PAM.");
-    auth.get_handler().set_credentials(username, password);
-    auth.authenticate().expect("Failed to auth.");
-    auth.open_session().expect("Failed to open session");
-    env::set_current_dir(user.home_dir())?;
-    let mut child = Command::new("/usr/bin/zsh")
+	terminal::enable_raw_mode()?;
+    term.clear()?;
+
+    loop {
+        match auth(&mut term, error) {
+            Ok(username) => {
+                user = users::get_user_by_name(&username).unwrap();
+                break;
+            }
+            
+            Err(PamError(errcode)) => {
+                error = Some(ERROR_STRINGS[clamp(errcode as usize, 0, ERROR_STRINGS.len())].to_string())
+            }            
+        }
+    }
+
+    terminal::disable_raw_mode()?;
+    term.clear()?;
+    term.show_cursor()?;
+    
+    env::set_current_dir(user.home_dir()).expect("blahhh");
+    let mut child = Command::new(user.shell())
         .uid(user.uid())
         .gid(user.primary_group_id())
         .arg("-l")
         .arg("-c")
         .arg("startx")
-        .spawn()?;
-    child.wait()?;
-    println!("\nSuccessfully created a session!");
+        .spawn().expect("Oh dear god wat");
+        child.wait().expect("The horror");
+    
 	Ok(())
 }
-*/
+
+fn clamp(input: usize, min: usize, max: usize) -> usize {
+    if input > max {
+        max
+    } else if input < min {
+        min
+    } else {
+        input
+    }
+}
+
+/* Attempt to authenticate. Return a username if successful */
+fn auth<B>(term: &mut Terminal<B>, error: Option<String>) -> PamResult<String>
+where
+    B: Backend
+{
+    let mut conv = DynamicConv::new(term);
+    if let Some(err) = error {
+        conv.error_string(err);
+    }
+    
+    let mut auth = Authenticator::with_handler("login", conv)?;
+    auth.close_on_drop = false;
+    
+    auth.authenticate()?;
+    auth.open_session()?;
+    
+    Ok(auth.handler().username().to_string())
+}
