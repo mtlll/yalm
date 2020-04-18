@@ -14,7 +14,7 @@ use tui::backend::Backend;
 
 use tui::terminal::Frame;
 #[derive(Clone)]
-pub struct Textbox<'a> {
+pub struct Textbox<> {
 	input: Vec<char>,
 	input_mask: Option<Vec<char>>,
 	input_idx: usize,
@@ -25,11 +25,11 @@ pub struct Textbox<'a> {
 	mask_char: char,
 	mask_char_width: u16,
 	is_focused: bool,
-	title: Option<&'a str>,
+	title: Option<String>,
 }
 
-impl<'a> Default for Textbox<'a> {
-	fn default() -> Textbox<'a> {
+impl Default for Textbox {
+	fn default() -> Textbox {
 		Textbox {
 			input: vec![],
 			input_mask: None,
@@ -46,8 +46,8 @@ impl<'a> Default for Textbox<'a> {
 	}
 } 
 
-impl<'a> Textbox<'a> {
-	pub fn mask_input(mut self, flag: bool) -> Textbox<'a>  {
+impl Textbox {
+	pub fn mask_input(mut self, flag: bool) -> Textbox  {
 		self.mask_input = flag;
 		self.input_mask = if flag {
 			Some(vec![])
@@ -58,12 +58,12 @@ impl<'a> Textbox<'a> {
 		self
 	}
 	
-	pub fn mask_char(mut self, mask_char: char) -> Textbox<'a> {
+	pub fn mask_char(mut self, mask_char: char) -> Textbox {
 		self.mask_char = mask_char;
 		self
 	}
 	
-	pub fn title(mut self, title: &'a str) -> Textbox<'a> {
+	pub fn title(mut self, title: String) -> Textbox {
 		self.title = Some(title);
 		self
 	}
@@ -116,7 +116,7 @@ impl<'a> Textbox<'a> {
 	}
 }
 
-impl<'a> Textbox<'a>
+impl Textbox
 {
 	pub fn render<B>(&mut self, f: &mut Frame<B>, area: Rect) 
 	where
@@ -136,8 +136,8 @@ impl<'a> Textbox<'a>
 			display_vec.iter().collect()
 		};
 		
-		let block = if let Some(title) = self.title {
-			Block::default().borders(Borders::ALL).title(title)
+		let block = if let Some(title) = &self.title {
+			Block::default().borders(Borders::ALL).title(&title)
 		} else {
 			Block::default().borders(Borders::ALL)
 		};
