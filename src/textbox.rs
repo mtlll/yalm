@@ -1,18 +1,16 @@
-use tui::widgets::{
-	Paragraph,
-	Block,
-	Widget,
-	Borders,
-	Text
+use tui::{
+    widgets::{
+	   Paragraph,
+	   Block,
+        Widget,
+        Borders,
+        Text
+    },
+    layout::Rect,
+    backend::Backend,
+    terminal::Frame,
 };
-use tui::layout::{
-	Rect,
-};
-use tui::buffer::Buffer;
 
-use tui::backend::Backend;
-
-use tui::terminal::Frame;
 #[derive(Clone)]
 pub struct Textbox<> {
 	input: Vec<char>,

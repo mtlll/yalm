@@ -2,15 +2,15 @@ use std::ffi::{
     CStr,
     CString,
 };
-use std::os::raw::c_char;
-use crate::loginform::LoginForm;
+
 use tui::{
     backend::Backend, 
     Terminal,
 };
+
 use pam::Converse;
 
-
+use crate::loginform::LoginForm;
 
 pub struct DynamicConv<'a, B> 
 where

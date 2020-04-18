@@ -1,40 +1,36 @@
-use std::fmt::Debug;
-use std::borrow::BorrowMut;
-use std::io;
-use std::{thread, time};
-use tui::backend::{Backend, CrosstermBackend};
-use tui::layout::{Constraint, Direction, Layout, Rect, Margin};
-use tui::style::{Modifier, Style};
-use tui::widgets::{Block, Borders, Widget, Paragraph, Text};
-use tui::Frame;
-use tui::Terminal;
+use std::{
+    io,
+    process::Command,
+    env,
+    os::unix::process::CommandExt
+};
+use tui::{
+    backend::{
+        Backend,
+        CrosstermBackend
+    },
+    Terminal,
+};
+
 use crossterm::{
 	terminal,
-	cursor::MoveTo,
 	ErrorKind,
-	event::{read, Event, KeyCode}
 };
-use std::process::Command;
-use std::env;
-use std::ffi::{CStr, CString};
-use pam::Authenticator;
-use pam::Converse;
-use pam::PamResult;
-use pam::PamError;
-use pam_sys::PamReturnCode;
 
-use std::os::unix::process::CommandExt;
+use pam::{
+    Authenticator,
+    Converse, 
+    PamResult,
+    PamError
+};
 
 use users;
+
 use users::os::unix::UserExt;
 
 mod textbox;
 
-use textbox::Textbox;
-
 mod loginform;
-
-use loginform::LoginForm;
 
 mod dynamicconv;
 use dynamicconv::DynamicConv;
@@ -57,10 +53,8 @@ fn main() -> Result<(), ErrorKind> {
         main_loop()?;
     }
 }
-
-fn main_loop() -> Result<(), ErrorKind> {
-    
-	let stdout = io::stdout();
+fn main_loop() -> Result<(), ErrorKind> { 
+    let stdout = io::stdout();
 	let backend = CrosstermBackend::new(stdout);
 	let mut term = Terminal::new(backend)?;
 
