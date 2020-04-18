@@ -1,28 +1,12 @@
-use std::{
-    io,
-    process::Command,
-    env,
-    os::unix::process::CommandExt
-};
+use std::{env, io, os::unix::process::CommandExt, process::Command};
 use tui::{
-    backend::{
-        Backend,
-        CrosstermBackend
-    },
+    backend::{Backend, CrosstermBackend},
     Terminal,
 };
 
-use crossterm::{
-	terminal,
-	ErrorKind,
-};
+use crossterm::{terminal, ErrorKind};
 
-use pam::{
-    Authenticator,
-    Converse, 
-    PamResult,
-    PamError
-};
+use pam::{Authenticator, Converse, PamError, PamResult};
 
 use users;
 
@@ -44,24 +28,23 @@ static ERROR_STRINGS: [&str; 9] = [
     "Memory buffer error",
     "Permission denied",
     "Authentication failure",
-    "Unknown error"
+    "Unknown error",
 ];
 
 fn main() -> Result<(), ErrorKind> {
-
     loop {
         main_loop()?;
     }
 }
-fn main_loop() -> Result<(), ErrorKind> { 
+fn main_loop() -> Result<(), ErrorKind> {
     let stdout = io::stdout();
-	let backend = CrosstermBackend::new(stdout);
-	let mut term = Terminal::new(backend)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut term = Terminal::new(backend)?;
 
     let user: users::User;
     let mut error: Option<String> = None;
-    
-	terminal::enable_raw_mode()?;
+
+    terminal::enable_raw_mode()?;
     term.clear()?;
 
     loop {
@@ -70,17 +53,18 @@ fn main_loop() -> Result<(), ErrorKind> {
                 user = users::get_user_by_name(&username).unwrap();
                 break;
             }
-            
+
             Err(PamError(errcode)) => {
-                error = Some(ERROR_STRINGS[clamp(errcode as usize, 0, ERROR_STRINGS.len())].to_string())
-            }            
+                error =
+                    Some(ERROR_STRINGS[clamp(errcode as usize, 0, ERROR_STRINGS.len())].to_string())
+            }
         }
     }
 
     terminal::disable_raw_mode()?;
     term.clear()?;
     term.show_cursor()?;
-    
+
     env::set_current_dir(user.home_dir()).expect("blahhh");
     let mut child = Command::new(user.shell())
         .uid(user.uid())
@@ -88,10 +72,11 @@ fn main_loop() -> Result<(), ErrorKind> {
         .arg("-l")
         .arg("-c")
         .arg("startx")
-        .spawn().expect("Oh dear god wat");
-        child.wait().expect("The horror");
-    
-	Ok(())
+        .spawn()
+        .expect("Oh dear god wat");
+    child.wait().expect("The horror");
+
+    Ok(())
 }
 
 fn clamp(input: usize, min: usize, max: usize) -> usize {
@@ -107,18 +92,18 @@ fn clamp(input: usize, min: usize, max: usize) -> usize {
 /* Attempt to authenticate. Return a username if successful */
 fn auth<B>(term: &mut Terminal<B>, error: Option<String>) -> PamResult<String>
 where
-    B: Backend
+    B: Backend,
 {
     let mut conv = DynamicConv::new(term);
     if let Some(err) = error {
         conv.error_string(err);
     }
-    
+
     let mut auth = Authenticator::with_handler("login", conv)?;
     auth.close_on_drop = false;
-    
+
     auth.authenticate()?;
     auth.open_session()?;
-    
+
     Ok(auth.handler().username().to_string())
 }
