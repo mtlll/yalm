@@ -9,8 +9,10 @@ use tui::{
     },
     widgets::{
         Block,
+        Paragraph,
         Borders,
         Widget,
+        Text,
     },
     Frame,
     Terminal,
@@ -25,6 +27,8 @@ use crossterm::{
 };
 
 pub struct LoginForm {
+    message: Option<String>,
+    error: Option<String>,
     inputs: Vec<Textbox>,
     inputs_idx: usize,
     block_height: u16
@@ -34,6 +38,8 @@ pub struct LoginForm {
 impl Default for LoginForm {
     fn default() -> LoginForm {
         LoginForm {
+            message: None,
+            error: None,
             inputs: vec![],
             inputs_idx: 0,
             block_height: 2
@@ -49,12 +55,64 @@ impl LoginForm {
         self.block_height += 3;
     }
     
-    pub fn draw_inputs<B>(&mut self, f: &mut Frame<B>) 
+    pub fn draw_form<B>(&mut self, term: &mut Terminal<B>) 
     where
         B: Backend
     {
-        let layout_chunk = get_input_area(f.size(), self.block_height);
+        term.draw(|mut f| {
+            let (message_chunk, input_chunk) = self.get_form_chunks(f.size());
         
+            self.draw_inputs(&mut f, input_chunk);
+            self.draw_message(&mut f, message_chunk);
+        }).unwrap();
+    }
+    
+    pub fn message(&mut self, message: String) {
+        self.message = Some(message); 
+    }
+    
+    pub fn error(&mut self, error: String)
+    {
+        self.error = Some(error);
+    }
+    
+    //reset the struct, but keep the error string as is for the next round
+    fn reset(&mut self) {
+        self.message = None;
+        self.inputs.clear();
+        self.inputs_idx = 0;
+        self.block_height = 2;
+    }
+    
+    fn get_form_chunks(&self, layout_chunk: Rect) -> (Rect, Rect) {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .horizontal_margin(40)
+            .constraints(
+                [
+                    Constraint::Percentage(40),
+                    Constraint::Length(1),
+                    Constraint::Length(self.block_height),
+                    Constraint::Percentage(40),
+                ]
+                .as_ref()
+            )
+            .split(layout_chunk);
+                (chunks[1], chunks[2])
+    }
+
+    fn draw_message<B>(&mut self, f: &mut Frame<B>, layout_chunk: Rect)
+    where
+        B: Backend
+    {
+        if let Some(message) = self.error.as_ref().or(self.message.as_ref()) { 
+            Paragraph::new([Text::raw(message)].iter()).render(f, layout_chunk);
+        } 
+    }
+    fn draw_inputs<B>(&mut self, f: &mut Frame<B>, layout_chunk: Rect)
+    where
+        B: Backend
+    {
         Block::default()
             .borders(Borders::ALL)
             .render(f, layout_chunk);
@@ -87,9 +145,7 @@ impl LoginForm {
         term.show_cursor()?;
         
         loop {
-            term.draw(|mut f| {
-                self.draw_inputs(&mut f);
-            })?;
+            self.draw_form(term);
             let active_input : &mut Textbox = &mut self.inputs[active_idx];
             let (x, y) = active_input.get_cursor_xy();
             term.set_cursor(x, y)?;
@@ -109,8 +165,11 @@ impl LoginForm {
                         active_input.move_right();
                     }
                     KeyCode::Enter => {
-                        term.hide_cursor();
+                        term.hide_cursor()?;
                         return Ok(active_input.get_input());
+                    }
+                    KeyCode::Esc => {
+                        panic!("foo")
                     }
                     _ => {}
                 }
@@ -120,20 +179,4 @@ impl LoginForm {
     }
 }
 
-fn get_input_area(layout_chunk: Rect, height: u16) -> Rect {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .horizontal_margin(40)
-        .constraints(
-            [
-                Constraint::Percentage(40),
-                Constraint::Length(height),
-                Constraint::Percentage(40),
-            ]
-            .as_ref(),
-        )
-        .split(layout_chunk);
-    
-        chunks[1]
-}
 
