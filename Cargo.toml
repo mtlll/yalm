@@ -9,5 +9,6 @@ edition = "2018"
 [dependencies]
 tui = { version = "0.8", default-features = false, features = ['crossterm']}
 crossterm = "0.14"
-pam = "0.7.0"
+pam = {git = "https://github.com/mtlll/pam", version = "0.7.0"}
+pam-sys = "^0.5"
 users = "0.9"
